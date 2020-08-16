@@ -1,0 +1,4 @@
+.env
+configs/*/*
+!configs/*/.gitkeep
+tags

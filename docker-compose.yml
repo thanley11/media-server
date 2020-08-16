@@ -1,0 +1,75 @@
+version: '3'
+
+services:
+  sabnzbd:
+    image: linuxserver/sabnzbd
+    container_name: sabnzbd
+    volumes:
+      - config_sabnzbd:/config
+      - ${DL_DIR}/Downloads/incomplete:/incomplete-downloads
+      - ${DL_DIR}/Downloads/completed:/downloads
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TIME_ZONE}
+  deluge:
+    image: linuxserver/deluge
+    container_name: deluge
+    volumes:
+      - config_deluge:/config
+      - ${DL_DIR}/Downloads/completed:/downloads
+    ports:
+      - "8112:8112"
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=America/New_York
+  sonarr:
+    image: linuxserver/sonarr
+    container_name: sonarr
+    depends_on:
+      - sabnzbd
+    #environment:
+      #- VERSION=latest
+    volumes:
+      - config_sonarr:/config
+      #- plex_tv:/tv
+      - ${DL_DIR}/teevee:/tv
+      - "/etc/localtime:/etc/localtime:ro"
+      - ${DL_DIR}/Downloads/completed:/downloads
+    ports:
+      - "8989:8989"
+      - "9898:9898"
+    links:
+      - sabnzbd
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TIME_ZONE}
+volumes:
+  config_sabnzbd:
+    driver: local
+    driver_opts:
+      type: none
+      device: $PWD/configs/sabnzbd/
+      o: bind
+  config_deluge:
+    driver: local
+    driver_opts:
+      type: none
+      device: $PWD/configs/deluge/
+      o: bind
+  config_sonarr:
+    driver: local
+    driver_opts:
+      type: none
+      device: $PWD/configs/sonarr/
+      o: bind
+  downloads:
+  downloads_incomplete:
