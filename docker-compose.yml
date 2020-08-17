@@ -19,30 +19,11 @@ services:
       # This will ensure files have the sabnzbd user, and media group when moved to your
       # media storage director(y|ies)
       - UMASK_SET=022
-  deluge:
-    image: linuxserver/deluge
-    container_name: deluge
-    volumes:
-      - config_deluge:/config
-      - ${DL_DIR}/Downloads/completed:/downloads
-    ports:
-      - "8112:8112"
-    restart: always
-    environment:
-      - PUID=${DEL_ID}
-      - PGID=${PGID}
-      - TZ=America/New_York
-      - UMASK_SET=022
   sonarr:
     image: linuxserver/sonarr
     container_name: sonarr
     depends_on:
       - sabnzbd
-    environment:
-      - PUID=${SON_ID}
-      - PGID=${PGID}
-      - UMASK_SET=022
-      #- VERSION=latest
     volumes:
       - config_sonarr:/config
       #- plex_tv:/tv
@@ -56,8 +37,9 @@ services:
       - sabnzbd
     restart: always
     environment:
-      - PUID=${PUID}
+      - PUID=${SON_ID}
       - PGID=${PGID}
+      - UMASK_SET=022
       - TZ=${TIME_ZONE}
 volumes:
   config_sabnzbd:
@@ -65,12 +47,6 @@ volumes:
     driver_opts:
       type: none
       device: $PWD/configs/sabnzbd/
-      o: bind
-  config_deluge:
-    driver: local
-    driver_opts:
-      type: none
-      device: $PWD/configs/deluge/
       o: bind
   config_sonarr:
     driver: local
