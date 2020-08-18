@@ -6,8 +6,8 @@ services:
     container_name: sabnzbd
     volumes:
       - config_sabnzbd:/config
-      - ${DL_DIR}/Downloads/incomplete:/incomplete-downloads
-      - ${DL_DIR}/Downloads/completed:/downloads
+      - ${INCOMP_DIR}:/incomplete-downloads
+      - ${COMP_DIR}:/downloads
     ports:
       - "8080:8080"
       - "9095:9095"
@@ -27,9 +27,9 @@ services:
     volumes:
       - config_sonarr:/config
       #- plex_tv:/tv
-      - ${DL_DIR}/teevee:/tv
+      - ${TV_DIR}:/tv
       - "/etc/localtime:/etc/localtime:ro"
-      - ${DL_DIR}/Downloads/completed:/downloads
+      - ${COMP_DIR}:/downloads
     ports:
       - "8989:8989"
       - "9898:9898"

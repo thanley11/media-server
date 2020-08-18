@@ -37,14 +37,16 @@ docker-compose -f ~/docker/docker-compose.yml up -d
  * Recursively change the permissions and group of your media storage
    directories so that usenet has access.  Something like:
    ```
-   $ chgrp -R usenet /media
-   $ find /media -type f -exec chmod 664 {} \;
-   $ find /media -type d -exec chmod 775 {} \;
+   $ chown -R tom:usenet /media
+   # Change all folders and files
+    sudo chmod -R 775 TV
+   # Change all files to 664
+    sudo find TV -type f -print0 |xargs -0 chmod 664
    ```
 
 2. Create a system user for all programs (sonarr, sabnzbd, etc) with our usenet groupid.
    ```
-   $ sudo adduser --system --no-create-home --gid 1001 sonarr
+   $ sudo useradd -G usenet -m sabnzbd
    Adding system user `sonarr' (UID 126) ...
    Adding new user `sonarr' (UID 124) with group `usenet' ...
    Not creating home directory `/home/sonarr'.
