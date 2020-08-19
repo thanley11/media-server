@@ -1,6 +1,25 @@
 version: '3.6'
 
 services:
+  tvheadend:
+    image: linuxserver/tvheadend
+    container_name: tvheadend
+    environment:
+      - PUID=${TV_ID}
+      - PGID=${TV_GUID}
+      - TZ=${TIME_ZONE}
+      - UMASK_SET=022
+      #- RUN_OPTS=<run options here> #optional
+    volumes:
+      - config_tvheadend:/config
+      - ${REC_DIR}:/recordings
+    ports:
+      - 9981:9981
+      - 9982:9982
+    devices:
+      - /dev/dri:/dev/dri
+      - /dev/dvb:/dev/dvb
+    restart: unless-stopped
   sabnzbd:
     image: linuxserver/sabnzbd
     container_name: sabnzbd
@@ -47,6 +66,12 @@ volumes:
     driver_opts:
       type: none
       device: $PWD/configs/sabnzbd/
+      o: bind
+  config_tvheadend:
+    driver: local
+    driver_opts:
+      type: none
+      device: $PWD/configs/tvheadend/
       o: bind
   config_sonarr:
     driver: local
