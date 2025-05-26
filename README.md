@@ -11,7 +11,13 @@ TIME_ZONE=America/New_York
 DL_DIR={location for downloads}
 SAB_ID=id of sabnzbd user
 SON_ID="" sonarr user
-DEL_ID="" deluge user
+RAD_ID=radarr user
+TV_ID=tvheadend user
+CMSKP_ID=comskip user
+INCOMP_DIR
+COMP_DIR
+REC_DIR
+MOVIES_DIR
 ```
 
 * Set perms for any folders to group usenet
@@ -52,3 +58,7 @@ docker-compose -f ~/docker/docker-compose.yml up -d
    Not creating home directory `/home/sonarr'.
    ```
 
+# TVHeadend
+- Move script into tvheadend config folder and chmod +x
+- Add command to Configuration -> Recording -> Post Processor Command
+- /config/run_comskip.sh "%f"

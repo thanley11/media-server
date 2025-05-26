@@ -1,82 +1,73 @@
 #!/bin/bash
-set -e
 
-# Check input
-if [ -z "$1" ]; then
-echo "❌ Usage: $0 <input_file.ts>"
-exit 1
+input_file="$1"  # .ts file passed in
+input_base=$(basename "$input_file" .ts)
+input_dir=$(dirname "$input_file")
+edl_file="$input_dir/$input_base.edl"
+output_mkv="$input_dir/$input_base.mkv"
+temp_output_file="$input_dir/${input_base}_clean.ts"
+
+# Exit if EDL doesn't exist
+if [[ ! -f "$edl_file" ]]; then
+  echo "Missing EDL: $edl_file"
+  exit 1
 fi
 
-input_file="$1"
-filename_base="${input_file%.*}"
-edl_file="${filename_base}.edl"
-temp_output_file="${filename_base}_clean.ts"
-mkv_output_file="${filename_base}.mkv"
-
-# Ensure EDL file exists
-if [ ! -f "$edl_file" ]; then
-echo "❌ EDL file not found: $edl_file"
-exit 1
-fi
-
+echo "Processing EDL: $edl_file"
 echo "Input video: $input_file"
-echo "EDL file: $edl_file"
-echo "Temporary output: $temp_output_file"
-echo "Final MKV: $mkv_output_file"
+echo "Output (clean TS): $temp_output_file"
+echo "Final Output (MKV): $output_mkv"
 
-mkdir -p parts
-rm -f parts/part_*.ts parts/concat_list.txt
+# Prepare parts directory
+parts_dir="$input_dir/parts"
+mkdir -p "$parts_dir"
+rm -f "$parts_dir/"*.ts "$parts_dir/concat_list.txt"
 
-# Step 1: Get total duration of input video
-duration=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$input_file")
-duration=$(printf "%.2f" "$duration")
-
-# Step 2: Invert EDL into "keep" ranges
+# Read EDL and convert cut list to keep list
 keep_starts=()
 keep_ends=()
+prev_end=0
 
-last_end=0
+while IFS= read -r line; do
+  cut_start=$(echo "$line" | awk '{print $1}')
+  cut_end=$(echo "$line" | awk '{print $2}')
 
-while read -r start end _; do
-# Buffer commercial cut range by 1 second inward
-start=$(echo "$start + 1" | bc)
-end=$(echo "$end - 1" | bc)
+  if [[ $(echo "$cut_start > $prev_end" | bc) -eq 1 ]]; then
+    keep_starts+=("$prev_end")
+    keep_ends+=("$cut_start")
+  fi
 
-if (( $(echo "$start > $last_end" | bc -l) )); then
-keep_starts+=("$last_end")
-keep_ends+=("$start")
-fi
-last_end="$end"
+  prev_end="$cut_end"
 done < "$edl_file"
 
-if (( $(echo "$last_end < $duration" | bc -l) )); then
-keep_starts+=("$last_end")
-keep_ends+=("$duration")
+# Keep tail segment if any
+duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$input_file")
+if [[ $(echo "$prev_end < $duration" | bc) -eq 1 ]]; then
+  keep_starts+=("$prev_end")
+  keep_ends+=("$duration")
 fi
 
-# Step 3: Extract keep segments
+# Extract keep segments
 for i in "${!keep_starts[@]}"; do
-start="${keep_starts[$i]}"
-end="${keep_ends[$i]}"
-part_file=$(printf "parts/part_%02d.ts" "$((i+1))")
-echo "Keeping: $start to $end → $part_file"
-ffmpeg -loglevel error -stats -y -ss "$start" -to "$end" -i "$input_file" -c copy "$part_file"
-echo "file '$(basename "$part_file")'" >> parts/concat_list.txt
+  start="${keep_starts[$i]}"
+  end="${keep_ends[$i]}"
+  part_file="$parts_dir/part_$(printf "%02d" "$((i+1))").ts"
+  echo "Keeping: $start to $end → $part_file"
+  ffmpeg -loglevel error -stats -y -ss "$start" -to "$end" -i "$input_file" -c copy "$part_file"
+  echo "file '$(basename "$part_file")'" >> "$parts_dir/concat_list.txt"
 done
 
-# Step 4: Concatenate
-pushd parts > /dev/null
-ffmpeg -loglevel error -stats -y -f concat -safe 0 -i concat_list.txt -c copy "../$temp_output_file"
-popd > /dev/null
+# Concatenate parts
+echo "Concatenating parts..."
+ffmpeg -loglevel error -stats -y -f concat -safe 0 -i "$parts_dir/concat_list.txt" -c copy "$temp_output_file"
 
-# Step 5: Encode to MKV using libx265
+# Convert to MKV using libx264
 echo "Converting to MKV..."
-ffmpeg -loglevel error -stats -y -i "$temp_output_file" -c:v libx265 -c:a copy "$mkv_output_file"
+ffmpeg -loglevel error -stats -y -i "$temp_output_file" -c:v libx264 -crf 24 -preset fast -c:a copy "$output_mkv"
 
-# Step 6: Cleanup
-echo "Cleaning up..."
-rm -f "$input_file" "$temp_output_file"
-rm -rf parts
+# Cleanup
+rm -f "$input_file"
+rm -f "$temp_output_file"
+rm -rf "$parts_dir"
 
-echo "✅ Done. Final file: $mkv_output_file"
-
+echo "Done: $output_mkv"
