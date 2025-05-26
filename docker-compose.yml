@@ -20,6 +20,8 @@ services:
       - /dev/dri:/dev/dri
       - /dev/dvb:/dev/dvb
     restart: unless-stopped
+    depends_on:
+      - comcutter
   sabnzbd:
     image: linuxserver/sabnzbd
     container_name: sabnzbd
@@ -60,6 +62,36 @@ services:
       - PGID=${PGID}
       - UMASK_SET=022
       - TZ=${TIME_ZONE}
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    depends_on:
+      - sabnzbd
+    environment:
+      - PUID=${RAD_ID}
+      - PGID=${PGID}
+      - TZ=${TIME_ZONE}
+    volumes:
+      - config_radarr:/config
+      - ${MOVIES_DIR}:/movies
+      - ${COMP_DIR}:/downloads
+    ports:
+      - 7878:7878
+    restart: unless-stopped
+  comcutter:
+    image: bljohnsondev/comcutter
+    container_name: comcutter
+    environment:
+      - PUID=${CMSKP_ID}
+      - PGID=${TV_GUID}
+      - TZ=${TIME_ZONE}
+    ports:
+      - 9090:9090
+    volumes:
+      - config_comskip:/data
+      - ${REC_DIR}:/library
+    restart: unless-stopped
+
 volumes:
   config_sabnzbd:
     driver: local
@@ -79,5 +111,32 @@ volumes:
       type: none
       device: $PWD/configs/sonarr/
       o: bind
+  config_radarr:
+    driver: local
+    driver_opts:
+      type: none
+      device: $PWD/configs/radarr/
+      o: bind
+  config_comskip:
+    driver: local
+    driver_opts:
+      type: none
+      device: $PWD/configs/comskip/
+      o: bind
+
   downloads:
   downloads_incomplete:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
